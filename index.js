@@ -1,36 +1,25 @@
 const express = require("express");
 const app = express();
 const port = process.env.PORT || 3000;
+const chromium = require('chrome-aws-lambda');
 
-let chrome = {};
-let puppeteer;
-
-if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-  chrome = require("chrome-aws-lambda");
-  puppeteer = require("puppeteer-core");
-} else {
-  puppeteer = require("puppeteer");
-}
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 
 app.get("/api/:palavraPesquisada", async (req, res) => {
-  console.log(process.env.AWS_LAMBDA_FUNCTION_VERSION);
-  let options = {};
-
-  if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-    options = {
-      args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
-      defaultViewport: chrome.defaultViewport,
-      executablePath: await chrome.executablePath,
-      headless: true,
-      ignoreHTTPSErrors: true,
-    };
-  }
-
   const palavraPesquisada = req.params.palavraPesquisada;
 
   try {
-    let browser = await puppeteer.launch(options);
-    const page = await browser.newPage();
+    let browser = await chromium.puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
+    });
+
+    let page = await browser.newPage();
     
     // Aumentando o timeout para 60 segundos
     await page.goto(
@@ -90,7 +79,7 @@ app.get("/api/:palavraPesquisada", async (req, res) => {
 
     res.json({ resultado: "Ótimo! Está disponível para ser a sua marca!" });
   } catch (error) {
-    console.error("Erro durante a navegação:", error);
+    console.error("Erro durante a navegação:", JSON.stringify(error));
     res.status(500).json({ error: "Erro durante a navegação" });
   } finally {
     // Fechando o navegador
