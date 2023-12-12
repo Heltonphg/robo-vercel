@@ -1,28 +1,51 @@
-const express = require('express');
-const puppeteer = require('puppeteer');
+const express = require("express");
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.get('/api/:palavraPesquisada', async (req, res) => {
+let chrome = {};
+let puppeteer;
+
+if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+  chrome = require("chrome-aws-lambda");
+  puppeteer = require("puppeteer-core");
+} else {
+  puppeteer = require("puppeteer");
+}
+
+app.get("/api/:palavraPesquisada", async (req, res) => {
+  console.log('áqui');
+  let options = {};
+
+  if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+    options = {
+      args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
+      defaultViewport: chrome.defaultViewport,
+      executablePath: await chrome.executablePath,
+      headless: true,
+      ignoreHTTPSErrors: true,
+    };
+  }
+
   const palavraPesquisada = req.params.palavraPesquisada;
 
-  const browser = await puppeteer.launch({
-    headless: false,
-    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  });
-
-  const page = await browser.newPage();
-
   try {
+    let browser = await puppeteer.launch(options);
+    const page = await browser.newPage();
+    
     // Aumentando o timeout para 60 segundos
-    await page.goto('https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_basica.jsp', { timeout: 60000 });
+    await page.goto(
+      "https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_basica.jsp",
+      { timeout: 60000 }
+    );
 
     // Clique no elemento <font class="marcador">
-    await page.click('font.marcador a');
+    await page.click("font.marcador a");
 
     // Encontre o elemento usando XPath que corresponde ao link "Ajuda?"
-    const ajudaLink = await page.waitForXPath('//tr[@align="right"]/td/font/a[text()="Ajuda?"]');
-    
+    const ajudaLink = await page.waitForXPath(
+      '//tr[@align="right"]/td/font/a[text()="Ajuda?"]'
+    );
+
     // Verifique se o link foi encontrado e clique nele
     if (ajudaLink) {
       await Promise.all([
@@ -34,7 +57,9 @@ app.get('/api/:palavraPesquisada', async (req, res) => {
     }
 
     // Redirecione diretamente para Pesquisa_classe_avancada.jsp
-    await page.goto('https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_avancada.jsp');
+    await page.goto(
+      "https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_avancada.jsp"
+    );
 
     // Inserindo a palavraPesquisada na caixa de texto
     await page.waitForSelector('input[name="marca"]');
@@ -49,7 +74,7 @@ app.get('/api/:palavraPesquisada', async (req, res) => {
     await page.waitForTimeout(5000); // Aumentando o tempo de espera
 
     // salvamento em PDF
-    await page.pdf({ path: 'Resultado.pdf' });
+    await page.pdf({ path: "Resultado.pdf" });
 
     // Use evaluate para extrair o número de resultados encontrados
     const numeroResultados = await page.evaluate(() => {
@@ -58,15 +83,15 @@ app.get('/api/:palavraPesquisada', async (req, res) => {
     });
 
     if (numeroResultados === null) {
-      console.log('Ótimo! Está disponível para ser a sua marca!');
+      console.log("Ótimo! Está disponível para ser a sua marca!");
     } else {
-      console.log('Número de resultados encontrados:', numeroResultados);
+      console.log("Número de resultados encontrados:", numeroResultados);
     }
 
-    res.json({ resultado: 'Ótimo! Está disponível para ser a sua marca!' });
+    res.json({ resultado: "Ótimo! Está disponível para ser a sua marca!" });
   } catch (error) {
-    console.error('Erro durante a navegação:', error);
-    res.status(500).json({ error: 'Erro durante a navegação' });
+    console.error("Erro durante a navegação:", error);
+    res.status(500).json({ error: "Erro durante a navegação" });
   } finally {
     // Fechando o navegador
     await browser.close();
@@ -74,5 +99,5 @@ app.get('/api/:palavraPesquisada', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`API rodando em http://localhost:${port}`);
+  console.log(`API Listening at port ${port}`);
 });
