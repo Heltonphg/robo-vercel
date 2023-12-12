@@ -13,7 +13,7 @@ if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
 }
 
 app.get("/api/:palavraPesquisada", async (req, res) => {
-  console.log('áqui');
+  console.log(process.env.AWS_LAMBDA_FUNCTION_VERSION);
   let options = {};
 
   if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
