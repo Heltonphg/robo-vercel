@@ -65,7 +65,7 @@ app.get("/api/:palavraPesquisada", async (req, res) => {
     }
   } catch (error) {
     console.error("Erro durante a navegação:", JSON.stringify(error));
-    res.status(500).json({ error: `Erro durante a navegação: ${SON.stringify(error)}` });
+    res.status(500).json({ error: `Erro durante a navegação: ${JSON.stringify(error)}` });
   } finally {
     // Fechando o navegador
     // await browser.close();
