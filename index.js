@@ -68,7 +68,7 @@ app.get("/api/:palavraPesquisada", async (req, res) => {
     res.status(500).json({ error: `Erro durante a navegação: ${SON.stringify(error)}` });
   } finally {
     // Fechando o navegador
-    await browser.close();
+    // await browser.close();
   }
 });
 
