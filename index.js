@@ -1,7 +1,9 @@
 const express = require("express");
+const path = require("path");
 const app = express();
 const port = process.env.PORT || 3000;
 const chromium = require('chrome-aws-lambda');
+app.use(express.static('public'))
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -19,31 +21,13 @@ app.get("/api/:palavraPesquisada", async (req, res) => {
       ignoreHTTPSErrors: true,
     });
 
-    let page = await browser.newPage();
+    const page = await browser.newPage();
     
     // Aumentando o timeout para 60 segundos
-    await page.goto(
-      "https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_basica.jsp",
-      { timeout: 60000 }
-    );
+    await page.goto("https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_basica.jsp");
 
     // Clique no elemento <font class="marcador">
     await page.click("font.marcador a");
-
-    // Encontre o elemento usando XPath que corresponde ao link "Ajuda?"
-    const ajudaLink = await page.waitForXPath(
-      '//tr[@align="right"]/td/font/a[text()="Ajuda?"]'
-    );
-
-    // Verifique se o link foi encontrado e clique nele
-    if (ajudaLink) {
-      await Promise.all([
-        page.waitForNavigation(), // Aguarde a navegação
-        ajudaLink.click(), // Clique no link
-      ]);
-    } else {
-      console.log('Link "Ajuda?" não encontrado');
-    }
 
     // Redirecione diretamente para Pesquisa_classe_avancada.jsp
     await page.goto(
@@ -63,7 +47,7 @@ app.get("/api/:palavraPesquisada", async (req, res) => {
     await page.waitForTimeout(5000); // Aumentando o tempo de espera
 
     // salvamento em PDF
-    await page.pdf({ path: "Resultado.pdf" });
+    await page.screenshot({ path: "Resultado.jpeg" })
 
     // Use evaluate para extrair o número de resultados encontrados
     const numeroResultados = await page.evaluate(() => {
@@ -72,15 +56,16 @@ app.get("/api/:palavraPesquisada", async (req, res) => {
     });
 
     if (numeroResultados === null) {
-      console.log("Ótimo! Está disponível para ser a sua marca!");
+      res.json({ resultado: "Ótimo! Está disponível para ser a sua marca!" });
     } else {
       console.log("Número de resultados encontrados:", numeroResultados);
+      //return path to image
+      const pathImage = path.join(__dirname, 'Resultado.jpeg')
+      res.json({ pathImage });
     }
-
-    res.json({ resultado: "Ótimo! Está disponível para ser a sua marca!" });
   } catch (error) {
     console.error("Erro durante a navegação:", JSON.stringify(error));
-    res.status(500).json({ error: "Erro durante a navegação" });
+    res.status(500).json({ error: `Erro durante a navegação: ${SON.stringify(error)}` });
   } finally {
     // Fechando o navegador
     await browser.close();
